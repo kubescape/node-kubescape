@@ -855,7 +855,7 @@ export class KubescapeApi {
             /* ---------------------------------------------------------------*/
             ui.debug(`Kubescape requested version: ${configs.version}`)
 
-            if (!needsUpdate) {
+            if (!needsUpdate && configs.version === "latest") {
                 /* kubescape exists - check version match */
                 this._versionInfo = await this.getKubescapeVersion()
                 if (configs.version !== this.version) {
