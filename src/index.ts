@@ -489,7 +489,7 @@ export class KubescapeApi {
         return kubescapeCommand
     }
 
-    private async getKubescapeVersion(): Promise<KubescapeVersion> {
+    private async getKubescapeVersion(kind: string): Promise<KubescapeVersion> {
         if (!this.isInstalled) {
             throw new Error(ERROR_KUBESCAPE_NOT_INSTALLED)
         }
@@ -511,9 +511,12 @@ export class KubescapeApi {
                 let match = stdout.match(verRegex)
                 if (match) {
                     verInfo.version = match[0]
-
-                    const latestVersion = await getLatestVersion()
-                    verInfo.isLatest = latestVersion === verInfo.version
+                    if (kind === "latest") {
+                        const latestVersion = await getLatestVersion()
+                        verInfo.isLatest = latestVersion === verInfo.version
+                    } else {
+                        verInfo.isLatest = false
+                    }
                 }
 
                 resolve(verInfo)
@@ -855,9 +858,9 @@ export class KubescapeApi {
             /* ---------------------------------------------------------------*/
             ui.debug(`Kubescape requested version: ${configs.version}`)
 
-            if (!needsUpdate && configs.version === "latest") {
+            if (!needsUpdate) {
                 /* kubescape exists - check version match */
-                this._versionInfo = await this.getKubescapeVersion()
+                this._versionInfo = await this.getKubescapeVersion(configs.version)
                 if (configs.version !== this.version) {
                     if (configs.version === TXT_LATEST) {
                         const latestVersionTag = await getLatestVersion()
@@ -882,7 +885,7 @@ export class KubescapeApi {
                 }
 
                 /* Get version again after update */
-                this._versionInfo = await this.getKubescapeVersion()
+                this._versionInfo = await this.getKubescapeVersion(configs.version)
             }
             completedTasks++
             progress(completedTasks / tasksCount)
