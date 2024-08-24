@@ -761,6 +761,47 @@ export class KubescapeApi {
         return this._buildKubescapeCommand(`${COMMAND_SCAN_FRAMEWORK} ${scanFrameworks} ${ pathInput ? pathInput : ''}`, kubeconfigPath, args)
     }
 
+    _buildImageScanCommand(image: string, kubeconfigPath?: string, args?: any): string {
+        return this._buildKubescapeCommand(`scan image ${image}`, kubeconfigPath, args)
+    }
+
+    async scanImage(ui: KubescapeUi, image: string, kubeconfigPath?: string, overrideArgs?: any) {
+        return await withTempFile(`report-${uuidv4()}.json`, async (file) => {
+            const args = {
+                // "use-artifacts-from": `\"${this.frameworkDirectory}\"`,
+                "format": "json",
+                "format-version": "v2",
+                "output": `\"${file}\"`,
+                "keep-local": true,
+            }
+
+            if (overrideArgs) {
+                Object.assign(args, overrideArgs)
+            }
+
+            const cmd = this._buildImageScanCommand(image, kubeconfigPath, args);
+            ui.debug(`running kubescape scan command: ${cmd}`)
+
+            return await ui.slow<any>(`Kubescape scanning image ${image}`, async () => {
+                return new Promise<any>(resolve => {
+                    cp.exec(cmd, {maxBuffer : MAX_SCAN_BUFFER },
+                        async (err, stdout, stderr) => {
+                            ui.debug(`stdout: ${stdout}, stderr: ${stderr}`)
+                            if (err) {
+                                ui.error(stderr)
+                            }
+
+                            var report = JSON.parse(fs.readFileSync(file, 'utf8'));
+                            if (!report) {
+                                ui.error(`not valid response was given. stdout: ${stdout}, stderr: ${stderr}`)
+                                return resolve({})
+                            }
+                            return resolve(report)
+                        })
+                })
+            })
+        })
+    }
 
     /**
      * Scan yaml files using Kubescape
